@@ -48,7 +48,7 @@
                 var is_legit = !(
                                   content_without_space.includes("<script") ||
                                   content_without_space.includes("onerror") ||
-                                  content_without_space.includes("onlick") ||
+                                  content_without_space.includes("onclick") ||
                                   content_without_space.includes("onload")
                                 );
                 return is_legit;
@@ -67,10 +67,10 @@
                     alert("Be nice and don't try any XSS exploit :)");
                 } else {
                     var key = database.ref().push().key;
-                    /*database.ref(key).set({
+                    database.ref(key).set({
                         name:name.value,
                         msg:msg.value
-                    });*/
+                    });
 
                 }
                 name.value = "";
