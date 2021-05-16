@@ -1,53 +1,71 @@
 <!DOCTYPE html>
 <html>
-    <head>            
-        <script src="https://www.gstatic.com/firebasejs/5.8.2/firebase.js"></script>
+    <head>
+        <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <style>
             /* width */
-                ::-webkit-scrollbar {
+            ::-webkit-scrollbar {
                 width: 10px;
                 border-radius: 5px;
-                }
+            }
 
-                /* Track */
-                ::-webkit-scrollbar-track {
-                background: #CCE5FF; 
-                }
-                
-                /* Handle */
-                ::-webkit-scrollbar-thumb {
-                background: #8dc1f4; 
+            /* Track */
+            ::-webkit-scrollbar-track {
+                background: #CCE5FF;
+            }
+
+            /* Handle */
+            ::-webkit-scrollbar-thumb {
+                background: #8dc1f4;
                 border-radius: 5px;
-                }
+            }
 
-                /* Handle on hover */
-                ::-webkit-scrollbar-thumb:hover {
-                background: #6aabed; 
-                }
+            /* Handle on hover */
+            ::-webkit-scrollbar-thumb:hover {
+                background: #6aabed;
+            }
         </style>
         <script>
-        // Initialize Firebase
-        var config = {
-            apiKey: "AIzaSyAIChb9qkMcSKWf3gda2B26kyd-Dk8nZsw",
-            authDomain: "chatweb-f0cb7.firebaseapp.com",
-            databaseURL: "https://chatweb-f0cb7.firebaseio.com",
-            projectId: "chatweb-f0cb7",
-            storageBucket: "chatweb-f0cb7.appspot.com",
-            messagingSenderId: "368772977872"
-        };
-        firebase.initializeApp(config);
+            // Initialize Firebase
+            var config = {
+                apiKey: "AIzaSyAIChb9qkMcSKWf3gda2B26kyd-Dk8nZsw",
+                authDomain: "chatweb-f0cb7.firebaseapp.com",
+                databaseURL: "https://chatweb-f0cb7.firebaseio.com",
+                projectId: "chatweb-f0cb7",
+                storageBucket: "chatweb-f0cb7.appspot.com",
+                messagingSenderId: "368772977872"
+            };
+            firebase.initializeApp(config);
         </script>
         <script type="text/javascript">
             var database = firebase.database();
-            
+
+            // XSS Exploit Example: <img src="INVALID_LINK" onerror="(function () {...})();">
+            // Patched by checking if content contains any script tag before using it
+            function controlContent(content) {
+              var content_without_space = content.toString().replace(" ", "");
+              var is_legit = !(
+                                content_without_space.includes("<script") ||
+                                content_without_space.includes("onerror") ||
+                                content_without_space.includes("onlick") ||
+                                content_without_space.includes("onload")
+                              );
+              return [is_legit ? content : "blocked content", is_legit]
+            }
+
             function send(){
-                var name = document.getElementById("name");
-                var msg = document.getElementById("msg");
-                if (msg.value==""|| name.value==""){
+                var controlled_name = controlContent(document.getElementById("name"));
+                var controlled_msg = controlContent(document.getElementById("msg"));
+
+                var name = controlled_name[0];
+                var msg = controlled_msg[0];
+
+                if (msg.value == "" || name.value == ""){
                     alert("Please fill all details");
-                }
-                else {
+                } else if (controlled_name[1] || controlled_msg[1]) {
+                    alert("Be nice and don't try any XSS exploit :)");
+                } else {
                     var key = database.ref().push().key;
                     database.ref(key).set({
                         name:name.value,
@@ -59,27 +77,36 @@
                 msg.value="";
                 name.focus();
             }
+
             function scrolll(){
                     document.getElementById("chat_shower").scrollTop = document.getElementById("chat_shower").scrollHeight;
             }
+
             function increase_opacity(div){
-                
                 $(div).fadeTo(400,1);
-                setInterval(scrolll(div),1000)
-                
+                setInterval(scrolll(div),1000);
             }
+
             //document.getElementById("chat_shower").innerHTML="<div>Loading...</div>";
             function load_msg(){
 
                 database.ref().on("child_added", function(data){
-                        var div = document.createElement('div');
-                        div.style.opacity="0";
-                        var name = data.val().name;
-                        var msg = data.val().msg;
-                        div.innerHTML="<hr>@"+name+"&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;"+msg+"";
-                        //document.getElementById("chat_shower").appendChild(div);
-                        document.getElementById("chat_shower").append(div);
-                        increase_opacity(div);
+                      var controlled_name = controlContent(data.val().name);
+                      var controlled_msg = controlContent(data.val().msg);
+
+                      var name = controlled_name[0];
+                      var msg = controlled_msg[0];
+
+                      var div = document.createElement('div');
+                      var is_message_dangerous = (controlled_msg[1] == false || controlled_name[1] == false);
+
+                      if (is_message_dangerous)
+                        div.style.color=("red");
+                      div.style.opacity=("1");
+                      div.innerHTML="<hr>@" + name + "&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;" + msg + "";
+                      //document.getElementById("chat_shower").appendChild(div);
+                      document.getElementById("chat_shower").append(div);
+                      increase_opacity(div);
                 });
 
             }
@@ -91,17 +118,17 @@
         <div class="container row">
             <div class="col-md-6"></div>
             <div class="col-md-4">
-        <br>          
-        <h4>Live Chat</h4>
-        
-        <div id="chat_shower" onload="load_msg();" class="alert alert-primary" role="alert" style="max-height:500px;overflow-y:auto;px-0">
+                <br>
+                <h4>Live Chat</h4>
 
-        </div>
-        <input class="form-control form-control-sm my-1" type="text" placeholder="Name" id="name" >
-        <input class="form-control form-control-sm my-1" type="text" placeholder="Message" id="msg">
-        <button onclick="send();" class="btn btn-success btn-sm">Send</button><br><br>    
+                <div id="chat_shower" onload="load_msg();" class="alert alert-primary" role="alert" style="max-height:500px;overflow-y:auto;px-0"></div>
+                <input class="form-control form-control-sm my-1" type="text" placeholder="Name" id="name" >
+                <input class="form-control form-control-sm my-1" type="text" placeholder="Message" id="msg">
+                <button onclick="send();" class="btn btn-success btn-sm">Send</button>
+                <br>
+                <br>
             </div>
             <div class="col-md-4"></div>
-        </div>  
+        </div>
     </body>
 </html>
