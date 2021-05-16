@@ -44,42 +44,42 @@
             // XSS Exploit Example: <img src="INVALID_LINK" onerror="(function () {...})();">
             // Patched by checking if content contains any script tag before using it
             function controlContent(content) {
-              var content_without_space = content.toString().replace(" ", "");
-              var is_legit = !(
-                                content_without_space.includes("<script") ||
-                                content_without_space.includes("onerror") ||
-                                content_without_space.includes("onlick") ||
-                                content_without_space.includes("onload")
-                              );
-              return [is_legit ? content : "blocked content", is_legit]
+                var content_without_space = content.toString().replace(" ", "");
+                var is_legit = !(
+                                  content_without_space.includes("<script") ||
+                                  content_without_space.includes("onerror") ||
+                                  content_without_space.includes("onlick") ||
+                                  content_without_space.includes("onload")
+                                );
+                return is_legit;
             }
 
             function send(){
-                var controlled_name = controlContent(document.getElementById("name"));
-                var controlled_msg = controlContent(document.getElementById("msg"));
+                var name = document.getElementById("name");
+                var msg = document.getElementById("msg");
 
-                var name = controlled_name[0];
-                var msg = controlled_msg[0];
+                var is_name_legit = controlContent(name.value);
+                var is_msg_legit = controlContent(msg.value);
 
                 if (msg.value == "" || name.value == ""){
                     alert("Please fill all details");
-                } else if (controlled_name[1] || controlled_msg[1]) {
+                } else if (!is_name_legit || !is_msg_legit) {
                     alert("Be nice and don't try any XSS exploit :)");
                 } else {
                     var key = database.ref().push().key;
-                    database.ref(key).set({
+                    /*database.ref(key).set({
                         name:name.value,
                         msg:msg.value
-                    });
+                    });*/
 
                 }
-                name.value="";
-                msg.value="";
+                name.value = "";
+                msg.value = "";
                 name.focus();
             }
 
             function scrolll(){
-                    document.getElementById("chat_shower").scrollTop = document.getElementById("chat_shower").scrollHeight;
+                document.getElementById("chat_shower").scrollTop = document.getElementById("chat_shower").scrollHeight;
             }
 
             function increase_opacity(div){
@@ -89,26 +89,29 @@
 
             //document.getElementById("chat_shower").innerHTML="<div>Loading...</div>";
             function load_msg(){
-
                 database.ref().on("child_added", function(data){
-                      var controlled_name = controlContent(data.val().name);
-                      var controlled_msg = controlContent(data.val().msg);
+                    var name = data.val().name;
+                    var msg = data.val().msg;
 
-                      var name = controlled_name[0];
-                      var msg = controlled_msg[0];
+                    var is_name_legit = controlContent(name);
+                    var is_msg_legit = controlContent(msg);
 
-                      var div = document.createElement('div');
-                      var is_message_dangerous = (controlled_msg[1] == false || controlled_name[1] == false);
+                    var div = document.createElement('div');
+                    var is_message_dangerous = (!is_name_legit || !is_msg_legit);
 
-                      if (is_message_dangerous)
-                        div.style.color=("red");
-                      div.style.opacity=("1");
-                      div.innerHTML="<hr>@" + name + "&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;" + msg + "";
-                      //document.getElementById("chat_shower").appendChild(div);
-                      document.getElementById("chat_shower").append(div);
-                      increase_opacity(div);
+                    if (is_message_dangerous)
+                      div.style.color=("red");
+                      if (!is_name_legit)
+                          name = "blocked content"
+
+                      if (!is_msg_legit)
+                          msg = "blocked content"
+                    div.style.opacity=("1");
+                    div.innerHTML="<hr>@" + name + "&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;" + msg + "";
+                    //document.getElementById("chat_shower").appendChild(div);
+                    document.getElementById("chat_shower").append(div);
+                    increase_opacity(div);
                 });
-
             }
             load_msg();
         </script>
